@@ -3,63 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Haltestelle</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: black;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            flex-direction: column;
-        }
-        h1 {
-            font-size: 5rem;
-        }
-        button {
-            font-size: 2rem;
-            padding: 15px 30px;
-            margin-top: 20px;
-        }
-    </style>
+    <title>Bluetooth Scanner PWA</title>
+    <link rel="manifest" href="/manifest.json">
     <script>
-        let connectedDevices = 0;
-
-        function updateCount() {
-            fetch('/connections')
-                .then(response => response.json())
-                .then(data => {
-                    connectedDevices = data.count;
-                    document.getElementById('deviceCount').innerText = connectedDevices;
-
-                    if (connectedDevices > 1) {
-                        document.getElementById('connectButton').style.display = 'block';
-                    } else {
-                        document.getElementById('connectButton').style.display = 'none';
-                    }
-                });
+        // Check if the browser supports Web Bluetooth
+        if (!navigator.bluetooth) {
+            alert('Web Bluetooth is not supported in this browser. Please use Chrome or Edge.');
         }
 
-        function connectBluetooth() {
-            navigator.bluetooth.requestDevice({
-                acceptAllDevices: true,
-                optionalServices: ['generic_access']
-            }).then(device => {
-                console.log("Connected to Bluetooth:", device.name);
-                fetch('/increase', { method: 'POST' });
-            }).catch(error => {
-                console.error("Bluetooth connection failed:", error);
+        async function scanBluetoothDevices() {
+            const deviceList = document.getElementById('deviceList');
+            deviceList.innerHTML = '<tr><td colspan="2">Scanning...</td></tr>';
+            
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['device_information']
+                });
+                displayDevice(device);
+            } catch (error) {
+                deviceList.innerHTML = `<tr><td colspan="2" style='color: red;'>Error: ${error.message}</td></tr>`;
+            }
+        }
+
+        function displayDevice(device) {
+            const deviceList = document.getElementById('deviceList');
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+                <td>${device.name || 'Unknown'}</td>
+                <td><button onclick="connectToDevice('${device.id}')">Connect</button></td>
+            `;
+            deviceList.appendChild(row);
+        }
+
+        async function connectToDevice(deviceId) {
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['device_information']
+                });
+                alert(`Connected to: ${device.name || 'Unknown'}`);
+            } catch (error) {
+                alert(`Connection failed: ${error.message}`);
+            }
+        }
+
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(() => {
+                console.log('Service Worker Registered');
             });
         }
-
-        setInterval(updateCount, 5000);
     </script>
 </head>
 <body>
-    <h1>Connected: <span id="deviceCount">0</span></h1>
-    <button id="connectButton" onclick="connectBluetooth()" style="display:none;">Connect via Bluetooth</button>
+    <h1>Bluetooth Scanner PWA</h1>
+    <button id="scanButton" onclick="scanBluetoothDevices()">Scan for Devices</button>
+    <table border="1" style="width: 100%; margin-top: 10px;">
+        <thead>
+            <tr>
+                <th>Device Name</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="deviceList">
+            <tr><td colspan="2">No devices found</td></tr>
+        </tbody>
+    </table>
 </body>
 </html>
