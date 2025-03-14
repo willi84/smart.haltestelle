@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bluetooth Auto-Connect PWA</title>
+    <title>Bluetooth Device Scanner</title>
     <link rel="manifest" href="/manifest.json">
     <script>
         // Check if the browser supports Web Bluetooth
@@ -11,7 +11,9 @@
             alert('Web Bluetooth is not supported in this browser. Please use Chrome or Edge.');
         }
 
-        async function scanAndConnect() {
+        let foundDevice = null;
+
+        async function scanForDevice() {
             try {
                 const device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
@@ -19,26 +21,30 @@
                 });
                 
                 if (device.name === 'smart.robert') {
-                    await connectToDevice(device);
+                    foundDevice = device;
+                    document.getElementById('deviceStatus').textContent = `Found: ${device.name}`;
+                    document.getElementById('connectButton').style.display = 'block';
                 } else {
-                    alert(`Found ${device.name}, but not smart.robert. Please try again.`);
+                    alert(`Found ${device.name}, but it is not smart.robert. Try again.`);
                 }
             } catch (error) {
                 alert(`Error: ${error.message}`);
             }
         }
 
-        async function connectToDevice(device) {
+        async function connectToDevice() {
+            if (!foundDevice) {
+                alert('No device found to connect to.');
+                return;
+            }
             try {
-                const server = await device.gatt.connect();
-                alert(`Connected to ${device.name}`);
+                const server = await foundDevice.gatt.connect();
+                document.getElementById('connectionStatus').textContent = `Connected to ${foundDevice.name}`;
+                alert(`Successfully connected to ${foundDevice.name}`);
             } catch (error) {
                 alert(`Connection failed: ${error.message}`);
             }
         }
-
-        // Automatically start scanning when the page loads
-        window.onload = scanAndConnect;
 
         // Register service worker for PWA
         if ('serviceWorker' in navigator) {
@@ -49,7 +55,10 @@
     </script>
 </head>
 <body>
-    <h1>Bluetooth Auto-Connect PWA</h1>
-    <p>Scanning for smart.robert...</p>
+    <h1>Bluetooth Device Scanner</h1>
+    <button onclick="scanForDevice()">Scan for Device</button>
+    <p id="deviceStatus">No device found</p>
+    <button id="connectButton" onclick="connectToDevice()" style="display: none;">Connect to smart.robert</button>
+    <p id="connectionStatus"></p>
 </body>
 </html>
